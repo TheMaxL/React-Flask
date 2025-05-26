@@ -20,7 +20,6 @@ function App() {
 
   const analyzeFSM = async (series) => {
     try {
-      // Step 1: Analyze the input series
       const analyzeResponse = await fetch("http://localhost:5000/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -40,7 +39,6 @@ function App() {
       setTrace(trace);
       setError('');
 
-      // Step 2: Save the result to the database
       const saveResponse = await fetch("http://localhost:5000/api/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -66,6 +64,43 @@ function App() {
     }
   };
 
+  const getSignal = async (ticker) => {
+    const response = await fetch("http://localhost:5000/api/stock_signal",{
+      method: "POST",
+      headers: { "Content-Type": "application/json"},
+      body: JSON.stringify({ ticker }),
+    });
+
+    const data = await response.json();
+    console.log("Stock signal:", data.signal);
+  };
+
+  const fetchAndAnalyze = async (ticker) => {
+  try {
+    const response = await fetch(`http://localhost:5000/api/stock_state/${ticker}`);
+    const data = await response.json();
+
+    // Extract the state sequence (we only need the state values, not the timestamps)
+    const sequence = data.map(([time, state]) => state);
+
+    if (sequence.length === 0) {
+      setError("No stock data available for the last hour.");
+      setTrace([]);
+      return;
+    }
+
+    console.log(`Fetched hourly sequence for ${ticker}:`, sequence);
+
+    analyzeFSM(sequence);
+    setInputSeries(sequence.join(","));
+  } catch (err) {
+    console.error(err);
+    setError("Network error: Could not fetch stock state.");
+  }
+};
+
+
+
   const handleAnalyzeAndSave = () => {
     const series = inputSeries.split(',').map(str => str.trim()).map(Number);
 
@@ -79,33 +114,11 @@ function App() {
   };
 
   return (
-    <div className="container">
-      <h1 className="title">FSM Stock Analyzer</h1>
+    <div>
+      <div className="fsm-container">
+      <h1 className="fsm-title">FSM Stock Analyzer</h1>
 
-      {fsm && (
-  <div className="fsm-box">
-    <h3>FSM States:</h3>
-    <ul>
-      {fsm.states && fsm.states.map((state, index) => (
-        <li key={index}>{state}</li>
-      ))}
-    </ul>
-
-    <h3>FSM Transitions:</h3>
-    {fsm.transitions && Object.entries(fsm.transitions).map(([state, transitions]) => (
-      <div key={state}>
-        <strong>{state}</strong>
-        <ul>
-          {Object.entries(transitions).map(([input, nextState]) => (
-            <li key={input}>
-              On input <code>{input}</code> → <strong>{nextState}</strong>
-            </li>
-          ))}
-        </ul>
-      </div>
-    ))}
-  </div>
-)}
+      
       <input
         value={inputSeries}
         onChange={(e) => setInputSeries(e.target.value)}
@@ -129,6 +142,15 @@ function App() {
           ))}
         </div>
       )}
+    </div>
+    <div className="stocksearch">
+      <h1 className="stocktitle">Stock Search</h1>
+    </div>
+    <div className="stock-buttons">
+      <button onClick={() => fetchAndAnalyze('AAPL')}>Apple (AAPL)</button>
+      <button onClick={() => fetchAndAnalyze('MSFT')}>Microsoft (MSFT)</button>
+      
+    </div>
     </div>
   );
 }

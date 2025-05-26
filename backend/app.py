@@ -2,6 +2,8 @@ from flask import Flask, jsonify, request, json
 from flask_cors import CORS
 from fsm import FSM
 from flask_sqlalchemy import SQLAlchemy
+from stock_utils import get_daily_stock_signal, get_hourly_stock_states, save_stock_states_to_excel, get_last_week_stock_states
+import traceback 
 
 app = Flask(__name__)
 CORS(app)
@@ -84,6 +86,30 @@ def get_saved_fsms():
     except Exception as e:
         print("Error fetching saved FSM runs:", e)
         return jsonify({"error": "Failed to fetch saved FSM runs"}), 500
+
+@app.route('/api/stock_state/<ticker>', methods=['GET'])
+def stock_state(ticker):
+    try:
+        data = get_last_week_stock_states(ticker)  # <--- updated function
+
+        save_stock_states_to_excel(ticker, data)
+
+        if not data or not isinstance(data, list) or not all(
+            isinstance(entry, (list, tuple)) and len(entry) == 2 for entry in data
+        ):
+            return jsonify({'error': f"No valid stock data found for '{ticker}'"}), 400
+
+        return jsonify(data)
+
+    except Exception as e:
+        print(f"Error fetching stock state for {ticker}: {e}")
+        traceback.print_exc()
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/stock_signal/<ticker>')
+def stock_signal(ticker):
+    signal = get_daily_stock_signal(ticker)
+    return jsonify({'signal': signal})
 
 if __name__ == "__main__":
     with app.app_context():
