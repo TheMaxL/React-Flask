@@ -67,15 +67,51 @@ def save_stock_states_to_excel(ticker, data):
     except Exception as e:
         print(f"Error saving Excel file: {e}")
 
+def stock_prices_to_fsm_states(series):
+    avg = sum(series) / len(series)
+    states = []
+    for price in series:
+        if price > avg * 1.05:
+            states.append(0)
+        elif price < avg * 0.95:
+            states.append(2)
+        else:
+            states.append(1)
+    return states 
+
 def get_last_week_stock_states(ticker):
     try:
-        # 7 days back, daily intervals
-        df = yf.download(tickers=ticker, period="7d", interval="1d")
-        if df.empty:
+        # Download 7–10 days of daily interval stock data
+        df = yf.download(tickers=ticker, period="10d", interval="1d")
+        if df.empty or len(df) < 3:
             print(f"No daily data returned for {ticker}")
             return []
 
-        result = [(str(index.date()), float(row['Close'])) for index, row in df.iterrows()]
+        # Ensure 'Close' column exists and is usable
+        if 'Close' not in df.columns:
+            print(f"No 'Close' column found in DataFrame for {ticker}")
+            return []
+
+        # Extract dates and closing prices
+        dates = [str(index.date()) for index in df.index]
+        close_series = df['Close']
+        if isinstance(close_series, pd.DataFrame):
+            close_series = close_series.squeeze()
+        prices = close_series.tolist()
+
+        avg_price = sum(prices) / len(prices)
+        print(f"Average closing price for {ticker} over the past week: {avg_price:.2f}")
+
+        # Convert prices to FSM states
+        states = stock_prices_to_fsm_states(prices)
+
+        # Combine date, price, and state into tuples
+        result = list(zip(dates, prices, states))
+
+        # For debugging: print results
+        for entry in result:
+            print(f"Date: {entry[0]}, Close: {entry[1]}, State: {entry[2]}")
+
         return result
 
     except Exception as e:

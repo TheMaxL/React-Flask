@@ -90,21 +90,29 @@ def get_saved_fsms():
 @app.route('/api/stock_state/<ticker>', methods=['GET'])
 def stock_state(ticker):
     try:
-        data = get_last_week_stock_states(ticker)  # <--- updated function
+        print("Received ticker", ticker)
+        data = get_last_week_stock_states(ticker)
+
+        # Print the data structure for debugging
+        print("Returned data:", data)
 
         save_stock_states_to_excel(ticker, data)
 
-        if not data or not isinstance(data, list) or not all(
-            isinstance(entry, (list, tuple)) and len(entry) == 2 for entry in data
-        ):
+        if not data:
             return jsonify({'error': f"No valid stock data found for '{ticker}'"}), 400
 
-        return jsonify(data)
+        # Format data into JSON objects with keys
+        formatted_data = [
+            {"date": date, "close": close, "state": state} for date, close, state in data
+        ]
+
+        return jsonify(formatted_data), 200
 
     except Exception as e:
         print(f"Error fetching stock state for {ticker}: {e}")
         traceback.print_exc()
         return jsonify({'error': 'Internal server error'}), 500
+
 
 @app.route('/api/stock_signal/<ticker>')
 def stock_signal(ticker):
