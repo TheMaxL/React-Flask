@@ -69,7 +69,7 @@ function StockMarketFSM() {
       priceChange: change,
       symbol: fsmSymbol
     };
-    setHistory(prev => [newEntry, ...prev.slice(0, 9)]);
+    setHistory(prev => [newEntry, ...prev.slice(0, 13)]);
   };
 
   const runDemo = () => {
@@ -205,7 +205,7 @@ function StockMarketFSM() {
               ))}
             </select>
             <button onClick={fetchSignalAndRunFSM}>Fetch Signal & Run FSM</button>
-            <button onClick={fetchHistoricalStates}>Analyze 7-Day History</button>
+            <button onClick={fetchHistoricalStates}>Analyze 14-Day History</button>
           </div>
 
           <div className="input-group">

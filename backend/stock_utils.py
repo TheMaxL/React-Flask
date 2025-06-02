@@ -1,7 +1,7 @@
 import yfinance as yf
 import pandas as pd
 import os
-import datetime
+from datetime import datetime, timedelta
 import traceback
 
 def save_stock_states_to_excel(ticker, signals):
@@ -31,13 +31,16 @@ def get_last_week_stock_states(ticker):
     try:
         print(f"\nFetching data for {ticker}...")
         
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=20)
         # Fetch data with timeout and error handling
         df = yf.download(
             tickers=ticker,
-            period="7d",
+            start = start_date,
+            end = end_date,
             interval="1d",
             progress=False,
-            timeout=10
+            timeout=15
         )
         
         if df.empty:
@@ -61,8 +64,8 @@ def get_last_week_stock_states(ticker):
         print(close_prices)
         
         # Validate data length
-        if len(close_prices) < 2:
-            print(f"Not enough data points (need at least 2, got {len(close_prices)})")
+        if len(close_prices) > 14:
+            close_prices = close_prices[-15]
             return []
             
         # Calculate daily changes and generate signals
