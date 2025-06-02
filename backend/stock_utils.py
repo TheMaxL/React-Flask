@@ -1,83 +1,101 @@
 import yfinance as yf
-import pandas as pd 
+import pandas as pd
 import os
 import datetime
+import traceback
 
-def get_daily_stock_signal(ticker):
-    stock = yf.Ticker(ticker)
-    hist = stock.history(period="2d", interval="1d")
-
-    if len(hist) < 2:
-        return None 
-    
-    latest_close = hist['Close'].iloc[-1]
-    previous_close = hist['Close'].iloc[-2]
-
-    percent_change = ((latest_close - previous_close) / previous_close) * 100
-
-    if percent_change < -2:
-        return 0
-    elif -2 <= percent_change <= 2:
-        return 1
-    else:
-        return 2
-
-def get_hourly_stock_states(ticker):
-    now = datetime.datetime.now()
-    one_hour_ago = now - datetime.timedelta(hours=1)
-
-    df = yf.download(tickers=ticker, period="1d", interval="1m", progress=False)
-    df = df[df.index >= one_hour_ago]
-
-    if df.empty:
-        return []
-
-    states = []
-    prev_close = None
-
-    for time, row in df.iterrows():
-        price = row['Close']
-
-        if prev_close is None:
-            state = 1
-        else:
-            percent_change = ((price - prev_close) / prev_close) * 100
-
-            if percent_change < -2:
-                state = 0
-            elif percent_change > 2:
-                state = 2
-            else:
-                state = 1
-
-        states.append([time.strftime("%H:%M"), state])
-        prev_close = price
-
-    return states
-
-def save_stock_states_to_excel(ticker, data):
+def save_stock_states_to_excel(ticker, signals):
+    """Save FSM signals to Excel file with enhanced error handling"""
     print("save_stock_states_to_excel called")
     try:
         cwd = os.getcwd()
         print(f"Current working directory: {cwd}")
-        df = pd.DataFrame(data)
-        filename = os.path.join(cwd, f"{ticker}_hourly_stock_states.xlsx")
+        
+        # Create DataFrame with date index if available
+        if signals and isinstance(signals[0], tuple) and len(signals[0]) == 2:
+            df = pd.DataFrame(signals, columns=["Date", "Signal"])
+        else:
+            df = pd.DataFrame({"Signal": signals})
+            
+        filename = os.path.join(cwd, f"{ticker}_stock_signals.xlsx")
         df.to_excel(filename, index=False)
-        print(f"Saved Excel file as {filename}")
+        print(f"Successfully saved signals to {filename}")
+        return True
     except Exception as e:
-        print(f"Error saving Excel file: {e}")
+        print(f"Error saving Excel file: {str(e)}")
+        traceback.print_exc()
+        return False
 
 def get_last_week_stock_states(ticker):
+    """Fetch and process stock data with robust error handling"""
     try:
-        # 7 days back, daily intervals
-        df = yf.download(tickers=ticker, period="7d", interval="1d")
+        print(f"\nFetching data for {ticker}...")
+        
+        # Fetch data with timeout and error handling
+        df = yf.download(
+            tickers=ticker,
+            period="7d",
+            interval="1d",
+            progress=False,
+            timeout=10
+        )
+        
         if df.empty:
-            print(f"No daily data returned for {ticker}")
+            print(f"No data returned for {ticker}")
             return []
-
-        result = [(str(index.date()), float(row['Close'])) for index, row in df.iterrows()]
-        return result
-
+            
+        print("\nRaw DataFrame:")
+        print(df.head())
+        print("\nColumns:", df.columns)
+        
+        # Handle multi-index columns
+        if isinstance(df.columns, pd.MultiIndex):
+            if ('Close', ticker) in df.columns:
+                close_prices = df[('Close', ticker)]
+            else:
+                close_prices = df.xs('Close', axis=1, level=0).iloc[:, 0]
+        else:
+            close_prices = df['Close']
+            
+        print("\nClose prices:")
+        print(close_prices)
+        
+        # Validate data length
+        if len(close_prices) < 2:
+            print(f"Not enough data points (need at least 2, got {len(close_prices)})")
+            return []
+            
+        # Calculate daily changes and generate signals
+        signals = []
+        result = []
+        for i in range(1, len(close_prices)):
+            try:
+                date = str(close_prices.index[i].date())
+                prev_price = close_prices.iloc[i-1]
+                curr_price = close_prices.iloc[i]
+                percent_change = ((curr_price - prev_price) / prev_price) * 100
+                
+                # Generate signal (0=Growth, 1=Sideways, 2=Decline)
+                if percent_change > 3:
+                    signal = 0
+                elif percent_change < -3:
+                    signal = 2
+                else:
+                    signal = 1
+                    
+                result.append((date, percent_change))
+                signals.append(signal)
+                
+                print(f"Day {i}: {date} | Change: {percent_change:.2f}% | Signal: {signal}")
+                
+            except Exception as e:
+                print(f"Error processing day {i}: {str(e)}")
+                continue
+                
+        print(f"\nFinal signals: {signals}")
+        return signals if len(result) == 0 else result
+        
     except Exception as e:
-        print(f"Error fetching daily stock data for {ticker}: {e}")
+        print(f"Error in get_last_week_stock_states: {str(e)}")
+        traceback.print_exc()
         return []

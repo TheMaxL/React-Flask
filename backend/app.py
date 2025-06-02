@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, json
 from flask_cors import CORS
 from fsm import FSM
 from flask_sqlalchemy import SQLAlchemy
-from stock_utils import get_daily_stock_signal, get_hourly_stock_states, save_stock_states_to_excel, get_last_week_stock_states
+from stock_utils import save_stock_states_to_excel, get_last_week_stock_states
 import traceback 
 
 app = Flask(__name__)
@@ -34,24 +34,23 @@ def analyze():
         response.headers.add("Access-Control-Allow-Headers", "*")
         response.headers.add("Access-Control-Allow-Methods", "*")
         return response
-    print("Request headers:", request.headers)
-    print("Request data:", request.data)
-    print("Request form:", request.form)
-    print("Request args:", request.args)
+
     content = request.json
     print("Received:", content)  # DEBUG print
 
+    if not content or 'series' not in content:
+        return jsonify({"error": "Invalid input. Expecting JSON with 'series' key."}), 400
+
     data = content.get("series")
     
-    if not isinstance(data, list) or not all(isinstance(x, int) for x in data):
-        return jsonify({"error": "Invalid input. Expecting list of integers."}), 400
-
     try:
-        state_trace = fsm.run(data)
+        # Convert all elements to integers if they aren't already
+        input_series = [int(x) for x in data]
+        state_trace = fsm.run(input_series)
         return jsonify({"trace": state_trace})
     except Exception as e:
-        print("Error during FSM run:", e)  # DEBUG print
-        return jsonify({"error": "FSM failed to process input"}), 500
+        print("Error during FSM run:", e)
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/save", methods=["POST"])
 def save_run():
@@ -108,8 +107,23 @@ def stock_state(ticker):
 
 @app.route('/api/stock_signal/<ticker>')
 def stock_signal(ticker):
-    signal = get_daily_stock_signal(ticker)
-    return jsonify({'signal': signal})
+    try:
+        data = get_last_week_stock_states(ticker)
+        if not data or not isinstance(data, list):
+            return jsonify({'signal': None})
+        
+        # Return the last signal from historical data
+        last_entry = data[-1]
+        if isinstance(last_entry, list) and len(last_entry) == 2:
+            percent_change = last_entry[1]
+            if percent_change > 3: signal = 0
+            elif percent_change < -3: signal = 2
+            else: signal = 1
+            return jsonify({'signal': signal})
+        
+        return jsonify({'signal': None})
+    except Exception as e:
+        return jsonify({'signal': None})
 
 if __name__ == "__main__":
     with app.app_context():

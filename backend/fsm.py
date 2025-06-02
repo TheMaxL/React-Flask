@@ -1,14 +1,14 @@
 class FSM:
     def __init__(self):
-        self.states = ["Growth", "Correction", "Downtrend", "Sideways", "Decline"]
+        self.states = ["A", "B", "C", "D", "E"]
         self.transitions = {
-            "Sideways": {0: "Growth", 1: "Correction", 2: "Downtrend"},
-            "Growth": {0: "Growth"},
-            "Correction": {0: "Correction", 1: "Correction", 2: "Downtrend"},
-            "Downtrend": {0: "Correction", 1: "Decline", 2: "Decline"},
-            "Decline": {0: "Decline", 1: "Decline", 2: "Decline"},
+            "D": {0: "A", 1: "D", 2: "C"},
+            "A": {0: "A", 1: "D"},
+            "D": {0: "D", 1: "D", 2: "C"},
+            "C": {0: "D", 1: "E", 2: "E"},
+            "E": {0: "C", 1: "E", 2: "E"},
         }
-        self.current_state = "Sideways"
+        self.current_state = "D"
 
     def run(self, input_series):
         state_trace = []
