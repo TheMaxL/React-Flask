@@ -256,8 +256,31 @@ function StockMarketFSM() {
 
           <div className="stock-buttons">
             <select value={selectedTicker} onChange={handleDropdownChange}>
-              {['ASTS','BMBL','IONQ','COIN','FUBO','JOBY','PLTR','RIVN','LMND','UPST'].map(ticker => (
-                <option key={ticker} value={ticker}>{ticker}</option>
+              {[
+                { ticker: 'ASTS', name: 'AST SpaceMobile' },
+                { ticker: 'BMBL', name: 'Bumble Inc.' },
+                { ticker: 'IONQ', name: 'IonQ Inc.' },
+                { ticker: 'COIN', name: 'Coinbase Global' },
+                { ticker: 'FUBO', name: 'FuboTV Inc.' },
+                { ticker: 'JOBY', name: 'Joby Aviation' },
+                { ticker: 'PLTR', name: 'Palantir Technologies' },
+                { ticker: 'RIVN', name: 'Rivian Automotive' },
+                { ticker: 'LMND', name: 'Lemonade Inc.' },
+                { ticker: 'UPST', name: 'Upstart Holdings' },
+                { ticker: 'NVTA', name: 'Invitae Corporation' },
+                { ticker: 'SOFI', name: 'SoFi Technologies Inc.' },
+                { ticker: 'NKLA', name: 'Nikola Corporation' },
+                { ticker: 'BBIG', name: 'Vinco Ventures Inc.' },
+                { ticker: 'CEI', name: 'Camber Energy Inc.' },
+                { ticker: 'ROIV', name: 'Roivant Sciences Ltd.' },
+                { ticker: 'DNA', name: 'Ginkgo Bioworks Holdings Inc.' },
+                { ticker: 'BIGC', name: 'BioCommerce Holdings Inc.' },
+                { ticker: 'OPEN', name: 'Opendoor Technologies Inc.' },
+                { ticker: 'MARA', name: 'Marathon Digital Holdings Inc.' },
+              ].map(({ ticker, name }) => (
+                <option key={ticker} value={ticker}>
+                  {ticker} ({name})
+                </option>
               ))}
             </select>
             <button onClick={fetchHistoricalStates}>Analyze 14-Day History</button>
