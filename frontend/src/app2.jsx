@@ -19,6 +19,8 @@ function StockMarketFSM() {
     'E': { '0': 'C', '1': 'D', '2': 'E' }
   };
 //State hooks
+  const [analysisResult, setAnalysisResult] = useState('');
+  const [investmentAdvice, setInvestmentAdvice] = useState('')
   const [currentState, setCurrentState] = useState('D');
   const [stockSymbol, setStockSymbol] = useState('AAPL');
   const [priceChange, setPriceChange] = useState(0);
@@ -72,6 +74,17 @@ function StockMarketFSM() {
     setHistory(prev => [newEntry, ...prev.slice(0, 13)]);
   };
 
+  const getAdviceClass = (advice) => {
+    const mapping = {
+      "Invest": "invest",
+      "Wait": "wait",
+      "Not Safe": "not-safe",
+      "No Clear Signal": "neutral",
+      "Could not analyze data": "error"
+    };
+    return mapping[advice] || "neutral";
+  };
+
   const runDemo = () => {
     const demoChanges = [5.2, -1.5, -4.1, 2.8, -0.5, 6.3, -2.1];
     let i = 0;
@@ -115,7 +128,7 @@ function StockMarketFSM() {
 
         const { trace } = await analyzeRes.json();
 
-        // Create reverse mapping: state letter to state name
+        // State mapping
         const stateNameMap = {
           'A': 'Growth',
           'B': 'Correction',
@@ -134,11 +147,40 @@ function StockMarketFSM() {
           };
         });
 
-        setCurrentState(trace[trace.length-1] || 'D');
+        const lastState = trace[trace.length-1] || 'D';
+        const lastDayTrend = stateNameMap[lastState] || 'Unknown';
+        
+        setCurrentState(lastState);
         setHistory(newHistory);
+        
+        // Call analyzeHistory with the last day's trend
+        await analyzeHistory(lastDayTrend);
       }
     } catch (error) {
       console.error('Failed to fetch stock states:', error);
+      setAnalysisResult("Error");
+      setInvestmentAdvice("Could not fetch history");
+    }
+  };
+
+// Modified analyzeHistory to accept trend as parameter
+  const analyzeHistory = async (trend) => {
+    try {
+      setAnalysisResult(trend);
+
+      if (trend === "Growth") {
+        setInvestmentAdvice("Invest");
+      } else if (["Correction", "Sideways"].includes(trend)) {
+        setInvestmentAdvice("Wait");
+      } else if (["Downtrend", "Decline"].includes(trend)) {
+        setInvestmentAdvice("Not Safe");
+      } else {
+        setInvestmentAdvice("No Clear Signal");
+      }
+    } catch (err) {
+      console.error("Error analyzing history:", err);
+      setAnalysisResult("Error");
+      setInvestmentAdvice("Could not analyze data");
     }
   };
 
@@ -208,17 +250,13 @@ function StockMarketFSM() {
             <button onClick={fetchHistoricalStates}>Analyze 14-Day History</button>
           </div>
 
-          <div className="input-group">
-            <label htmlFor="priceChange">Price Change (%)</label>
-            <input 
-              type="number" 
-              id="priceChange" 
-              step="0.1" 
-              value={priceChange}
-              onChange={e => setPriceChange(parseFloat(e.target.value))}
-              onKeyDown={handleKeyDown} 
-            />
-            <button onClick={submitPriceChange}>Submit</button>
+          <div>
+            {analysisResult && (
+              <div className={`judgement-message ${getAdviceClass(investmentAdvice)}`}>
+                <p><strong>Trend:</strong> {analysisResult}</p>
+                <p><strong>Final Verdict:</strong> {investmentAdvice}</p>
+              </div>  
+            )}
           </div>
         </div>
 

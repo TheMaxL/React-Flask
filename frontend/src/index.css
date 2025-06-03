@@ -278,6 +278,33 @@ body {
   background: #f7fafc;
 }
 
+.judgement-message {
+  padding: 1rem;
+  border-radius: 10px;
+  margin-top: 1rem;
+  font-size: 1.1rem;
+  text-align: center;
+  font-weight: bold;
+}
+
+.judgement-message.invest {
+  background-color: #d4f4dd;
+  color: #1b5e20;
+  border: 2px solid #2e7d32;
+}
+
+.judgement-message.wait {
+  background-color: #fff8e1;
+  color: #ff8f00;
+  border: 2px solid #ffb300;
+}
+
+.judgement-message.not\ safe {
+  background-color: #ffebee;
+  color: #c62828;
+  border: 2px solid #e53935;
+}
+
 /* State Badge */
 .state-badge {
   display: inline-block;
