@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './index.css'; 
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts';
 
-//State definitions
 function StockMarketFSM() {
   const states = {
     'A': { name: 'Growth', description: 'Strong upward momentum with sustained buying pressure', class: 'state-growth' },
@@ -10,7 +10,7 @@ function StockMarketFSM() {
     'D': { name: 'Sideways', description: 'Market is in consolidation phase with minimal price movement', class: 'state-sideways' },
     'E': { name: 'Decline', description: 'Severe downward movement with panic selling', class: 'state-decline' }
   };
-//Transition tables
+
   const transitions = {
     'A': { '0': 'A', '1': 'B', '2': 'C' },
     'B': { '0': 'A', '1': 'D', '2': 'C' },
@@ -18,9 +18,9 @@ function StockMarketFSM() {
     'D': { '0': 'A', '1': 'D', '2': 'C' },
     'E': { '0': 'C', '1': 'D', '2': 'E' }
   };
-//State hooks
+
   const [analysisResult, setAnalysisResult] = useState('');
-  const [investmentAdvice, setInvestmentAdvice] = useState('')
+  const [investmentAdvice, setInvestmentAdvice] = useState('');
   const [currentState, setCurrentState] = useState('D');
   const [stockSymbol, setStockSymbol] = useState('AAPL');
   const [priceChange, setPriceChange] = useState(0);
@@ -34,7 +34,7 @@ function StockMarketFSM() {
       symbol: '1'
     }
   ]);
-//Effects
+
   useEffect(() => {
     const header = document.querySelector('.header h1');
     if (header) {
@@ -42,7 +42,7 @@ function StockMarketFSM() {
       return () => header.removeEventListener('dblclick', runDemo);
     }
   }, []);
-//Helper functions
+
   const getPriceSymbol = (change) => {
     if (change > 3) return '0';
     if (change >= -3) return '1';
@@ -50,9 +50,7 @@ function StockMarketFSM() {
   };
 
   const currentSymbol = getPriceSymbol(priceChange);
-
   const getNextState = (current, input) => transitions[current]?.[input] || current;
-
   const highlightState = setCurrentState;
 
   const submitPriceChange = () => {
@@ -128,7 +126,6 @@ function StockMarketFSM() {
 
         const { trace } = await analyzeRes.json();
 
-        // State mapping
         const stateNameMap = {
           'A': 'Growth',
           'B': 'Correction',
@@ -149,11 +146,10 @@ function StockMarketFSM() {
 
         const lastState = trace[trace.length-1] || 'D';
         const lastDayTrend = stateNameMap[lastState] || 'Unknown';
-        
+
         setCurrentState(lastState);
         setHistory(newHistory);
-        
-        // Call analyzeHistory with the last day's trend
+
         await analyzeHistory(lastDayTrend);
       }
     } catch (error) {
@@ -163,7 +159,6 @@ function StockMarketFSM() {
     }
   };
 
-// Modified analyzeHistory to accept trend as parameter
   const analyzeHistory = async (trend) => {
     try {
       setAnalysisResult(trend);
@@ -201,12 +196,31 @@ function StockMarketFSM() {
     }
   };
 
+  const chartData = history.slice().map((entry, index) => ({
+    time: entry.time,
+    value: typeof entry.priceChange === 'string' ? parseFloat(entry.priceChange) : entry.priceChange
+  }));
+
   return (
     <div className="container">
       <div className="header">
         <h1>📈 Stock Market FSM Analyzer</h1>
         <p>Analyze trader psychology through Finite State Machine modeling</p>
       </div>
+      
+      <div className="chart-container">
+        <h2>📉 Price Change Chart</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="time" interval={Math.ceil(chartData.length / 8)} angle={-35} textAnchor="end" height={60} />
+            <YAxis domain={['auto', 'auto']} />
+            <Tooltip />
+            <Line type="monotone" dataKey="value" stroke="#8884d8" dot={{ r: 3 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
 
       <div className="main-grid">
         <div className="card">
@@ -246,7 +260,6 @@ function StockMarketFSM() {
                 <option key={ticker} value={ticker}>{ticker}</option>
               ))}
             </select>
-            <button onClick={fetchSignalAndRunFSM}>Fetch Signal & Run FSM</button>
             <button onClick={fetchHistoricalStates}>Analyze 14-Day History</button>
           </div>
 
